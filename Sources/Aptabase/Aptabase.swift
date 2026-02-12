@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import os
 
 #if os(iOS) || os(visionOS)
 import UIKit
@@ -14,8 +15,12 @@ import UIKit
 public final class Aptabase: Sendable {
     private static let logger = Logger(subsystem: "com.aptabase", category: "Aptabase")
 
-    nonisolated(unsafe) private var client: AptabaseClient?
-    nonisolated(unsafe) private var notificationTask: Task<Void, Never>?
+    private struct State {
+        var client: AptabaseClient?
+        var notificationTask: Task<Void, Never>?
+    }
+
+    private let state = OSAllocatedUnfairLock(initialState: State())
 
     public static let shared = Aptabase()
 
@@ -26,7 +31,7 @@ public final class Aptabase: Sendable {
         "SH": ""
     ]
 
-    public func initialize(appKey: String, with options: InitOptions? = nil) {
+    public func initialize(appKey: String, options: InitOptions? = nil) {
         let parts = appKey.components(separatedBy: "-")
         if parts.count != 3 || hosts[parts[1]] == nil {
             Self.logger.error("The Aptabase App Key \(appKey) is invalid. Tracking will be disabled.")
@@ -45,28 +50,31 @@ public final class Aptabase: Sendable {
             return
         }
 
-        self.client = client
-        observeLifecycle()
+        state.withLock {
+            $0.client = client
+        }
+
+        observeLifecycle(client: client)
     }
 
-    public func trackEvent(_ eventName: String, with props: [String: AnyCodableValue] = [:]) {
-        guard let client else { return }
+    public func trackEvent(_ eventName: String, with props: [String: EventValue] = [:]) {
+        guard let client = state.withLock({ $0.client }) else { return }
 
         Task { await client.trackEvent(eventName, with: props) }
     }
 
     public func flush() {
-        guard let client else { return }
+        guard let client = state.withLock({ $0.client }) else { return }
 
         Task { await client.flush() }
     }
 
-    private func observeLifecycle() {
-        notificationTask?.cancel()
+    private func observeLifecycle(client: AptabaseClient) {
+        state.withLock {
+            $0.notificationTask?.cancel()
+        }
 
-        notificationTask = Task { [weak self] in
-            guard let self else { return }
-
+        let task = Task {
             #if os(tvOS) || os(iOS) || os(visionOS)
             let foreground = UIApplication.willEnterForegroundNotification
             let background = UIApplication.didEnterBackgroundNotification
@@ -81,15 +89,19 @@ public final class Aptabase: Sendable {
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                     for await _ in NotificationCenter.default.notifications(named: foreground) {
-                        await self.client?.startPolling()
+                        await client.startPolling()
                     }
                 }
                 group.addTask {
                     for await _ in NotificationCenter.default.notifications(named: background) {
-                        await self.client?.stopPolling()
+                        await client.stopPolling()
                     }
                 }
             }
+        }
+
+        state.withLock {
+            $0.notificationTask = task
         }
     }
 

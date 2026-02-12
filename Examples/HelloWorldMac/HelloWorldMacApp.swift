@@ -6,7 +6,7 @@ struct HelloWorldMacApp: App {
     init() {
         Aptabase.shared.initialize(
             appKey: "A-DEV-0000000000",
-            with: InitOptions(trackingMode: .release)
+            options: InitOptions(trackingMode: .release)
         )
     }
 

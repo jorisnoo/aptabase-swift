@@ -1,9 +1,8 @@
 import Foundation
 
-public enum AnyCodableValue: Sendable, Encodable {
+public enum EventValue: Sendable, Encodable, Equatable {
     case integer(Int)
     case string(String)
-    case float(Float)
     case double(Double)
     case boolean(Bool)
 
@@ -14,8 +13,6 @@ public enum AnyCodableValue: Sendable, Encodable {
             try container.encode(x)
         case let .string(x):
             try container.encode(x)
-        case let .float(x):
-            try container.encode(x)
         case let .double(x):
             try container.encode(x)
         case let .boolean(x):
@@ -24,25 +21,25 @@ public enum AnyCodableValue: Sendable, Encodable {
     }
 }
 
-extension AnyCodableValue: ExpressibleByStringLiteral {
+extension EventValue: ExpressibleByStringLiteral {
     public init(stringLiteral value: String) {
         self = .string(value)
     }
 }
 
-extension AnyCodableValue: ExpressibleByIntegerLiteral {
+extension EventValue: ExpressibleByIntegerLiteral {
     public init(integerLiteral value: Int) {
         self = .integer(value)
     }
 }
 
-extension AnyCodableValue: ExpressibleByFloatLiteral {
+extension EventValue: ExpressibleByFloatLiteral {
     public init(floatLiteral value: Double) {
         self = .double(value)
     }
 }
 
-extension AnyCodableValue: ExpressibleByBooleanLiteral {
+extension EventValue: ExpressibleByBooleanLiteral {
     public init(booleanLiteral value: Bool) {
         self = .boolean(value)
     }

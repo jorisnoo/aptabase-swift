@@ -1,3 +1,24 @@
+## 0.5.0
+
+**Breaking changes**
+
+* `AnyCodableValue` renamed to `EventValue` — shorter and clearer for the public API
+* `EventValue.float(Float)` case removed — use `.double(Double)` instead (float literals already produced `.double`)
+* `initialize(appKey:with:)` renamed to `initialize(appKey:options:)` for clarity
+* `stopPolling()` is now `async` — flushes events synchronously instead of fire-and-forget
+
+**Improvements**
+
+* Merged `EventDispatcher` actor into `AptabaseClient` — eliminates unnecessary `Task` hop per event, simpler architecture
+* Protected `Aptabase` singleton state with `OSAllocatedUnfairLock` — fixes potential data race on concurrent `initialize()`/`trackEvent()` calls
+* Replaced `nonisolated(unsafe)` properties with lock-protected state
+* Fixed polling loop to use structured cancellation instead of redundant `isCancelled` checks
+* Replaced `NSError` with typed `DispatchError` enum
+* JSON encoder is now a `static let` (shared, created once)
+* 4xx HTTP errors now log at `.error` level instead of `.warning`
+* `EventValue` conforms to `Equatable`
+* Removed misleading `[weak self]` from notification task (singleton never deallocates)
+
 ## 0.4.0
 
 **Breaking changes — Swift 6 modernization**

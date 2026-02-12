@@ -2,9 +2,7 @@
 
 # Swift SDK for Aptabase
 
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Faptabase%2Faptabase-swift%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/aptabase/aptabase-swift)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Faptabase%2Faptabase-swift%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/aptabase/aptabase-swift)
-
+This is a cleaned-up fork of [aptabase/aptabase-swift](https://github.com/aptabase/aptabase-swift) with Swift 6 modernization, a simplified single-actor architecture, and thread-safety fixes. See [CHANGELOG.md](CHANGELOG.md) for details.
 
 Instrument your apps with Aptabase, an Open Source, Privacy-First and Simple Analytics for Mobile, Desktop and Web Apps.
 
@@ -25,7 +23,7 @@ let package = Package(
     ...
     dependencies: [
         ...
-        .package(url: "https://github.com/aptabase/aptabase-swift.git", from: "0.4.0"),
+        .package(url: "https://github.com/aptabase/aptabase-swift.git", from: "0.5.0"),
     ],
     targets: [
         .target(
@@ -66,6 +64,13 @@ struct ExampleApp: App {
 }
 ```
 
+You can also pass `InitOptions` to customize the SDK:
+
+```swift
+let options = InitOptions(host: "https://your-self-hosted-instance.com")
+Aptabase.shared.initialize(appKey: "<YOUR_APP_KEY>", options: options)
+```
+
 Afterward, you can start tracking events with `trackEvent`:
 
 ```swift
@@ -75,13 +80,21 @@ Aptabase.shared.trackEvent("app_started") // An event with no properties
 Aptabase.shared.trackEvent("screen_view", with: ["name": "Settings"]) // An event with a custom property
 ```
 
+Custom properties use the `EventValue` type, which conforms to string, integer, float, and boolean literal protocols. Literals are inferred automatically, but variables need explicit wrapping:
+
+```swift
+let screenName = "Settings"
+Aptabase.shared.trackEvent("screen_view", with: ["name": .string(screenName)])
+Aptabase.shared.trackEvent("items_loaded", with: ["count": .integer(items.count)])
+```
+
 A few important notes:
 
 1. The SDK will automatically enhance the event with some useful information, like the OS, the app version, and other things.
 2. You're in control of what gets sent to Aptabase. This SDK does not automatically track any events, you need to call `trackEvent` manually.
    - Because of this, it's generally recommended to at least track an event at startup
 3. The `trackEvent` function is a non-blocking operation as it runs in the background.
-4. Only strings and numbers values are allowed on custom properties
+4. Custom properties support strings, integers, doubles, and booleans via `EventValue`
 
 ## Preparing for Submission to Apple App Store
 
