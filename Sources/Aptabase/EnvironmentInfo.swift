@@ -7,34 +7,43 @@ import AppKit
 #elseif os(watchOS)
 import WatchKit
 #elseif os(tvOS)
-import TVUIKit
+import UIKit
 #endif
 
-struct EnvironmentInfo {
-    var isDebug = false
-    var osName = ""
-    var osVersion = ""
-    var locale = ""
-    var appVersion = ""
-    var appBuildNumber = ""
-    var deviceModel = ""
+struct EnvironmentInfo: Sendable {
+    let isDebug: Bool
+    let osName: String
+    let osVersion: String
+    let locale: String
+    let appVersion: String
+    let appBuildNumber: String
+    let deviceModel: String
 
-    static func current() -> EnvironmentInfo {
+    static func current(trackingMode: TrackingMode = .readFromEnvironment) -> EnvironmentInfo {
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
         let appBuildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+
+        let isDebug: Bool = switch trackingMode {
+        case .debug:
+            true
+        case .release:
+            false
+        case .readFromEnvironment:
+            environmentIsDebug
+        }
 
         return EnvironmentInfo(
             isDebug: isDebug,
             osName: osName,
             osVersion: osVersion,
-            locale: Locale.current.languageCode ?? "",
+            locale: Locale.current.language.languageCode?.identifier ?? "",
             appVersion: appVersion ?? "",
             appBuildNumber: appBuildNumber ?? "",
             deviceModel: deviceModel
         )
     }
 
-    private static var isDebug: Bool {
+    private static var environmentIsDebug: Bool {
         #if DEBUG
         true
         #else
@@ -76,15 +85,12 @@ struct EnvironmentInfo {
 
     private static var deviceModel: String {
         #if os(macOS) || targetEnvironment(macCatalyst)
-        // `uname` returns x86_64 (or Apple Silicon equivalent) for Macs.
-        // Use `sysctlbyname` here instead to get actual model name. If it fails, fall back to `uname`.
         var size = 0
         sysctlbyname("hw.model", nil, &size, nil, 0)
         if size > 0 {
             var model = [CChar](repeating: 0, count: size)
             sysctlbyname("hw.model", &model, &size, nil, 0)
-            let deviceModel = String(cString: model)
-            // If we got a deviceModel, use it. Else continue to "default" logic.
+            let deviceModel = model.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
             if !deviceModel.isEmpty {
                 return deviceModel
             }

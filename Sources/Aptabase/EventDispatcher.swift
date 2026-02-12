@@ -1,41 +1,49 @@
 import Foundation
+import OSLog
 
-struct Event: Encodable {
-    var timestamp: Date
-    var sessionId: String
-    var eventName: String
-    var systemProps: SystemProps
-    var props: [String: AnyCodableValue]?
+struct Event: Encodable, Sendable {
+    let timestamp: Date
+    let sessionId: String
+    let eventName: String
+    let systemProps: SystemProps
+    let props: [String: AnyCodableValue]?
 
-    struct SystemProps: Encodable {
-        var isDebug: Bool
-        var locale: String
-        var osName: String
-        var osVersion: String
-        var appVersion: String
-        var appBuildNumber: String
-        var sdkVersion: String
-        var deviceModel: String
+    struct SystemProps: Encodable, Sendable {
+        let isDebug: Bool
+        let locale: String
+        let osName: String
+        let osVersion: String
+        let appVersion: String
+        let appBuildNumber: String
+        let sdkVersion: String
+        let deviceModel: String
     }
 }
 
-protocol URLSessionProtocol {
+protocol URLSessionProtocol: Sendable {
     func data(for: URLRequest) async throws -> (Data, URLResponse)
 }
 
 extension URLSession: URLSessionProtocol {}
 
-public class EventDispatcher {
-    private var events = ConcurrentQueue<Event>()
+actor EventDispatcher {
+    private static let logger = Logger(subsystem: "com.aptabase", category: "EventDispatcher")
+
+    private var events: [Event] = []
     private let maximumBatchSize = 25
     private let headers: [String: String]
     private let apiUrl: URL
     private let session: URLSessionProtocol
 
-    init(appKey: String, baseUrl: String, env: EnvironmentInfo, session: URLSessionProtocol = URLSession.shared) {
+    init?(appKey: String, baseUrl: String, env: EnvironmentInfo, session: URLSessionProtocol = URLSession.shared) {
+        guard let url = URL(string: "\(baseUrl)/api/v0/events") else {
+            Self.logger.error("Invalid base URL: \(baseUrl)")
+            return nil
+        }
+
         self.session = session
-        apiUrl = URL(string: "\(baseUrl)/api/v0/events")!
-        headers = [
+        self.apiUrl = url
+        self.headers = [
             "Content-Type": "application/json",
             "App-Key": appKey,
             "User-Agent": "\(env.osName)/\(env.osVersion) \(env.locale)"
@@ -43,11 +51,11 @@ public class EventDispatcher {
     }
 
     func enqueue(_ newEvent: Event) {
-        events.enqueue(newEvent)
+        events.append(newEvent)
     }
 
     func enqueue(_ newEvents: [Event]) {
-        events.enqueue(contentsOf: newEvents)
+        events.append(contentsOf: newEvents)
     }
 
     func flush() async {
@@ -57,7 +65,10 @@ public class EventDispatcher {
 
         var failedEvents: [Event] = []
         while !events.isEmpty {
-            let eventsToSend = events.dequeue(count: maximumBatchSize)
+            let count = min(maximumBatchSize, events.count)
+            let eventsToSend = Array(events.prefix(count))
+            events.removeFirst(count)
+
             do {
                 try await sendEvents(eventsToSend)
             } catch {
@@ -66,7 +77,7 @@ public class EventDispatcher {
         }
 
         if !failedEvents.isEmpty {
-            enqueue(failedEvents)
+            events.append(contentsOf: failedEvents)
         }
     }
 
@@ -93,13 +104,13 @@ public class EventDispatcher {
             let reason = "\(statusCode) \(responseText)"
 
             if statusCode < 500 {
-                debugPrint("Aptabase: Failed to send \(events.count) events because of \(reason). Will not retry.")
+                Self.logger.warning("Failed to send \(events.count) events: \(reason). Will not retry.")
                 return
             }
 
             throw NSError(domain: "AptabaseError", code: statusCode, userInfo: ["reason": reason])
         } catch {
-            debugPrint("Aptabase: Failed to send \(events.count) events. Reason: \(error)")
+            Self.logger.error("Failed to send \(events.count) events: \(error)")
             throw error
         }
     }

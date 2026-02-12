@@ -1,3 +1,35 @@
+## 0.4.0
+
+**Breaking changes — Swift 6 modernization**
+
+* Requires Swift 6.0+ and Xcode 16+
+* Minimum platform versions raised to iOS 17 / macOS 14 / watchOS 10 / tvOS 17 / visionOS 1
+* Dropped Objective-C support — all `@objc` annotations and `NSObject` inheritance removed
+* Dropped CocoaPods support — use Swift Package Manager instead
+* `TrackingMode` is now an enum with `.debug`, `.release`, `.readFromEnvironment` (previously `.asDebug`, `.asRelease`)
+* `InitOptions` is now a struct with `Double?` for `flushInterval` (previously `NSNumber?`)
+* `trackEvent` now takes `[String: AnyCodableValue]` properties — use literal syntax (`["key": "value", "count": 42]`) or explicit cases (`.integer(n)`, `.string(s)`, etc.)
+* The `Value` protocol has been removed
+* `AnyCodableValue` is now public and conforms to `Sendable` and `ExpressibleBy*Literal` protocols
+
+**Bug fixes**
+
+* Fixed race condition in `ConcurrentQueue.dequeue()` — eliminated by converting to actor isolation
+* Fixed thread-unsafe mutations of `sessionId`, `lastTouched`, and `pauseFlushTimer` in `AptabaseClient` — fixed by converting to actor
+* Fixed force-unwrap on `URL(string:)!` in `EventDispatcher` — now uses failable init
+* Fixed `AnyCodableValue.null` recursive encode that would crash if reached — case removed
+* Fixed deprecated `Locale.current.languageCode` — replaced with `Locale.current.language.languageCode?.identifier`
+* Fixed unused `TVUIKit` import on tvOS — replaced with `UIKit`
+
+**Internal improvements**
+
+* `AptabaseClient` and `EventDispatcher` converted from classes to actors
+* `Aptabase` is now `Sendable` — safe to use from any isolation context
+* Timer-based polling replaced with structured `Task` + `Task.sleep(for:)` loop
+* Session timeout uses `ContinuousClock` and `Duration` for monotonic timing
+* `NotificationCenter` observers use async `notifications(named:)` sequences
+* `os.Logger` replaces `debugPrint` for structured logging
+
 ## 0.3.11
 
 * Reverts previous change which caused RELEASE data not to show up

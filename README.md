@@ -8,6 +8,12 @@
 
 Instrument your apps with Aptabase, an Open Source, Privacy-First and Simple Analytics for Mobile, Desktop and Web Apps.
 
+## Requirements
+
+- Swift 6.0+
+- iOS 17+ / macOS 14+ / watchOS 10+ / tvOS 17+ / visionOS 1+
+- Xcode 16+
+
 ## Install
 
 #### Option 1: Swift Package Manager
@@ -19,12 +25,12 @@ let package = Package(
     ...
     dependencies: [
         ...
-        .package(name: "Aptabase", url: "https://github.com/aptabase/aptabase-swift.git", from: "0.3.4"),
+        .package(url: "https://github.com/aptabase/aptabase-swift.git", from: "0.4.0"),
     ],
     targets: [
         .target(
             name: "MyApp",
-            dependencies: ["Aptabase"] // Add as a dependency
+            dependencies: ["Aptabase"]
         )
     ]
 )
@@ -33,15 +39,6 @@ let package = Package(
 #### Option 2: Adding package dependencies with Xcode
 
 Use this [guide](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app) to add `aptabase-swift` to your project. Use https://github.com/aptabase/aptabase-swift for the URL when Xcode asks.
-
-#### Option 3: CocoaPods
-
-Aptabase is also available through CocoaPods. To install it, simply add the following line to your Podfile:
-
-```ruby
-pod 'Aptabase', :git => 'https://github.com/aptabase/aptabase-swift.git', :tag => '0.3.4'
-```
-
 
 ## Usage
 
@@ -58,9 +55,9 @@ import Aptabase
 @main
 struct ExampleApp: App {
     init() {
-        Aptabase.shared.initialize(appKey: "<YOUR_APP_KEY>") // 👈 this is where you enter your App Key
+        Aptabase.shared.initialize(appKey: "<YOUR_APP_KEY>")
     }
-    
+
     var body: some Scene {
         WindowGroup {
             MainView()

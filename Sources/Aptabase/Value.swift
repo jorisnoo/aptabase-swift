@@ -1,22 +1,13 @@
 import Foundation
 
-/// Protocol for supported property values.
-public protocol Value {}
-extension Int: Value {}
-extension Double: Value {}
-extension String: Value {}
-extension Float: Value {}
-extension Bool: Value {}
-
-enum AnyCodableValue: Encodable {
+public enum AnyCodableValue: Sendable, Encodable {
     case integer(Int)
     case string(String)
     case float(Float)
     case double(Double)
     case boolean(Bool)
-    case null
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
         case let .integer(x):
@@ -29,8 +20,30 @@ enum AnyCodableValue: Encodable {
             try container.encode(x)
         case let .boolean(x):
             try container.encode(x)
-        case .null:
-            try container.encode(self)
         }
+    }
+}
+
+extension AnyCodableValue: ExpressibleByStringLiteral {
+    public init(stringLiteral value: String) {
+        self = .string(value)
+    }
+}
+
+extension AnyCodableValue: ExpressibleByIntegerLiteral {
+    public init(integerLiteral value: Int) {
+        self = .integer(value)
+    }
+}
+
+extension AnyCodableValue: ExpressibleByFloatLiteral {
+    public init(floatLiteral value: Double) {
+        self = .double(value)
+    }
+}
+
+extension AnyCodableValue: ExpressibleByBooleanLiteral {
+    public init(booleanLiteral value: Bool) {
+        self = .boolean(value)
     }
 }
